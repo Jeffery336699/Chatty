@@ -67,7 +67,7 @@ fun Contracts() {
         val currentFriends = fetchLatestFriendsList()
         val sortedFriends = remember(currentFriends){
             currentFriends.groupBy {
-                val firstChar = Pinyin.toPinyin(it.nickname.first()).first()
+                val firstChar = Pinyin.toPinyin(it.nickname.first().toString(),"").first()
                 if (!firstChar.isLetter()) { '#' }
                 else {
                     firstChar.uppercaseChar()
