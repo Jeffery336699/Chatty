@@ -1,21 +1,26 @@
 package com.chatty.compose.screens.contracts
 
+import android.Manifest
 import android.app.Activity
-import android.content.pm.PackageManager
-import android.util.Log
 import android.view.SurfaceView
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Done
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -24,17 +29,17 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleObserver
-import androidx.lifecycle.OnLifecycleEvent
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import com.chatty.compose.R
 import com.chatty.compose.ui.components.AppScreen
-import com.chatty.compose.ui.components.CenterRow
 import com.chatty.compose.ui.components.TopBar
-import com.chatty.compose.ui.theme.chattyColors
 import com.chatty.compose.ui.utils.LocalNavController
 import com.chatty.compose.ui.utils.USER_CODE_PREFIX
 import com.chatty.compose.ui.utils.hasCameraFlash
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberPermissionState
 import com.king.zxing.CaptureHelper
 import com.king.zxing.OnCaptureCallback
 import com.king.zxing.ViewfinderView
@@ -48,11 +53,20 @@ private fun setTorch(helper: CaptureHelper, on: Boolean) {
     camera.parameters = parameters
 }
 
-
+/**
+ * 二维码扫描页面
+ * 1. 推荐使用在线草料二维码生成测试 [草料](https://cli.im/text/other)
+ * 2. 需要使用带固定前缀的二维码，例如 user://1007
+ */
+@OptIn(ExperimentalPermissionsApi::class)
 @Composable
 fun QRCodeScanner() {
     val naviController = LocalNavController.current
     val context = LocalContext.current
+    // Camera permission state
+    val cameraPermissionState = rememberPermissionState(
+        Manifest.permission.CAMERA
+    )
     val hasTorch = remember { context.hasCameraFlash() }
     val surfaceView = remember { SurfaceView(context) }
     val viewfinderView = remember { ViewfinderView(context) }
@@ -65,7 +79,7 @@ fun QRCodeScanner() {
                     var uid = it.removePrefix(USER_CODE_PREFIX)
                     naviController.navigate("${AppScreen.strangerProfile}/${uid}/二维码搜索")
                 }
-                restartPreviewAndDecode()
+                // restartPreviewAndDecode()
                 true
             }
             setOnCaptureCallback(captureCallback)
@@ -73,19 +87,18 @@ fun QRCodeScanner() {
             continuousScan(true)
             autoRestartPreviewAndDecode(false)
             onCreate()
-            (context as? ComponentActivity)?.lifecycle?.addObserver(object: LifecycleObserver {
-                @OnLifecycleEvent(Lifecycle.Event.ON_RESUME)
-                fun onResume() {
-                    this@apply.onResume()
-                }
+            (context as? ComponentActivity)?.lifecycle?.addObserver(object :
+                DefaultLifecycleObserver {
 
-                @OnLifecycleEvent(Lifecycle.Event.ON_PAUSE)
-                fun onPause() {
+                override fun onPause(owner: LifecycleOwner) {
                     this@apply.onPause()
                 }
 
-                @OnLifecycleEvent(Lifecycle.Event.ON_DESTROY)
-                fun onDestroy() {
+                override fun onResume(owner: LifecycleOwner) {
+                    this@apply.onResume()
+                }
+
+                override fun onDestroy(owner: LifecycleOwner) {
                     this@apply.onDestroy()
                 }
             })
@@ -121,6 +134,13 @@ fun QRCodeScanner() {
             helper.onDestroy()
         }
     }
+    // 补充个动态权限申请
+    if (!cameraPermissionState.status.isGranted) {
+        SideEffect {
+            cameraPermissionState.launchPermissionRequest()
+        }
+    }
+
 }
 
 @Composable
