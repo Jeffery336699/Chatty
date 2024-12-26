@@ -24,7 +24,7 @@ val initialMessages = listOf(
 
     Message(
         false,
-        "除了Flow，Rxjava、Livedata 等等都有类似方法转成Compose的状态，" +
+        "@1024，除了Flow，Rxjava、Livedata 等等都有类似方法转成Compose的状态，" +
                 "然后你就可以在Composable观察了 你可以看看官方文档，另外推荐你Compose的学习网站 \uD83D\uDC49" +
                 "https://milklab.dev/docs/",
         "8:05 PM"

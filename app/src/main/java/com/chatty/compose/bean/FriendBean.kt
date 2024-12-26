@@ -5,7 +5,14 @@ import android.os.Parcelable
 import androidx.compose.runtime.Stable
 import java.util.*
 
-
+/**
+ * 重组的基准原则：from《Compose从入门到实战.143页》
+ *  1. composable基于参数的比较结果来决定是否重组
+ *  2. 更准确的说，只有当参与比较的参数对象是稳定的且equals返回true,才认为是相等的
+ *  3. Ps:个人觉得默认情况是非常保守的，var就被当做不稳定的了，保守也是有原因的，因为UI的刷新依赖于重组,另外内部也对重组进行了大量的优化
+ */
+// Optimize: 优化重组检测：默认情况下，data class 已具备 equals 方法，Compose 能根据该方法判断对象是否变化。
+//  但使用 @Stable 可进一步优化：如果属性值未改变(就算是var被认定为不稳定的)，Compose仍可以跳过当前作用域的重组。
 @Stable
 data class MessageItemData(
     val userProfile: UserProfileData,

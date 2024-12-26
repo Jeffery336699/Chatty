@@ -35,8 +35,9 @@ fun Splash() {
     }
 
     LaunchedEffect(Unit) {
-        delay(500)
+        delay(800)
         navController.navigate(AppScreen.login) {
+            // Optimize: 跳转到登录页时，一路弹出到指定路由（即之前是splash嘛，inclusive=true就是连着它一起被弹出）
             popUpTo(AppScreen.splash) {
                 inclusive = true
             }

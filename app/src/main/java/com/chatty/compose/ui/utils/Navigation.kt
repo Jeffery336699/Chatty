@@ -8,6 +8,7 @@ val LocalNavController = compositionLocalOf<NavHostController> {
     error("CompositionLocal LocalNavController not present")
 }
 
+// 弹出所有的BackStackEntry
 fun NavOptionsBuilder.popUpAllBackStackEntry(navController: NavHostController) {
     navController.backQueue.reversed().forEach {
         it.destination.route?.let { route ->

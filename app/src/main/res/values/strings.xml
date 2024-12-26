@@ -11,6 +11,7 @@
     <string name="emojis_label">表情</string>
     <string name="stickers_label">贴纸</string>
     <string name="author_me">me</string>
+    <string name="author_me_lines">me\nme</string>
     <string name="now">8:30 PM</string>
 
     <string name="message">消息</string>

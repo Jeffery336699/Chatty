@@ -36,6 +36,7 @@ import com.google.accompanist.navigation.animation.AnimatedNavHost
 import com.google.accompanist.navigation.animation.composable
 import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
 
@@ -46,6 +47,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             ChattyTheme {
                 val systemUiController = rememberSystemUiController()
+                // 只有在浅色主题下才使用黑色图标，达到凸显的效果
                 val useDarkIcons =
                     !isSystemInDarkTheme() && MaterialTheme.chattyColors.isLight
                 SideEffect {
@@ -55,6 +57,7 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberAnimatedNavController()
 
                 DisposableEffect(Unit) {
+                    // 为了在切换页面时隐藏键盘
                     val destinationChangedListener =
                         NavController.OnDestinationChangedListener { _, _, _ -> hideIME() }
                     navController.addOnDestinationChangedListener(destinationChangedListener)
@@ -64,7 +67,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
-
+                // 再一次借助CompositionLocalProvider将NavController、BackPressedDispatcher提供给子组件，
+                // 注意只在这一层提供（其实也相当于全局提供了，因为这里已经包裹在最外层了）
                 CompositionLocalProvider(
                     LocalNavController provides navController,
                     LocalBackPressedDispatcher provides onBackPressedDispatcher
@@ -83,7 +87,7 @@ fun ChattyNavHost(navController: NavHostController) {
 
     AnimatedNavHost(
         navController = navController,
-        startDestination = AppScreen.login,
+        startDestination = AppScreen.splash,
 //        enterTransition = {
 //            slideInHorizontally(
 //                initialOffsetX = { it },

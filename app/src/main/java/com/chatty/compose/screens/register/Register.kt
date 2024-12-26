@@ -95,7 +95,8 @@ fun Register() {
                             painter = imageUri?.let { rememberAsyncImagePainter(imageUri) }
                                 ?:run { painterResource(id = R.drawable.ava1) },
                             contentDescription = null,
-                            contentScale = if (imageUri == null) ContentScale.Fit else ContentScale.Crop,
+                            // ContentScale.Crop缩放图片，使其填充整个区域，可能会裁剪图片（一般项目中用的最多）
+                            contentScale = ContentScale.Crop,
                             modifier = Modifier.clickable { launcher.launch("image/*") }
                         )
                     }
@@ -133,7 +134,7 @@ fun Register() {
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
             )
-            if (focusedTextField == 1 || username.isNotEmpty()) {
+            if (focusedTextField == 1 && username.isEmpty()) {
                 HeightSpacer(value = 4.dp)
                 Text(
                     text = if (username.isEmpty()) "用户名无法为空" else "恭喜，你可以使用此用户名",
@@ -154,7 +155,11 @@ fun Register() {
                 label = {
                     Text("密码")
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().onFocusChanged {
+                    if (it.isFocused) {
+                        focusedTextField = 2
+                    }
+                },
                 shape =  RoundedCornerShape(8.dp),
                 visualTransformation = if(passwordHidden) PasswordVisualTransformation() else VisualTransformation.None,
                 trailingIcon = {
@@ -228,6 +233,7 @@ fun Register() {
         }
     }
 
+    // activityX提供的拦截返回键,内部进行自己的处理（相当于是一种一次性的，当前Composable移除时内部就自动解注册）
     BackHandler {
         navController.popBackStack()
     }

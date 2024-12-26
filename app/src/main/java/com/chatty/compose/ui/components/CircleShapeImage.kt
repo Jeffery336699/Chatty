@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.Dp
 fun CircleShapeImage(
     size: Dp,
     painter: Painter,
-    contentScale: ContentScale = ContentScale.Fit
+    contentScale: ContentScale = ContentScale.Crop
 ) {
     Surface(
         modifier = Modifier

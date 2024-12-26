@@ -23,7 +23,7 @@ fun HomeTopBar(
 ) {
     val scope = rememberCoroutineScope()
     val chattyColors = LocalChattyColors.current
-
+    // 类似于Android中的Toolbar
     CenterAlignedTopAppBar(
         title = {
               Text("Chatty", color = MaterialTheme.chattyColors.textColor)

@@ -37,15 +37,14 @@ fun Messages(
     modifier: Modifier = Modifier
 ) {
     val conversationUser = LocalConversationUser.current
-
+    // 外层是一个Column的情况下，这里加个Box我感觉是一种防御性编程，避免出现一些不可预知的问题（eg滑动冲突）；尽量把未知情况控制在“自身范围”
     Box(modifier = modifier) {
-
         LazyColumn(
             reverseLayout = true,
             state = scrollState,
             // Add content padding so that the content can be scrolled (y-axis)
             // below the status bar + app bar
-            // TODO: Get height from somewhere
+            // 在statusBars的基础上再额外加个90dp的topPadding,为的是内容距离顶部有一定的距离，美观些
             contentPadding =
             WindowInsets.statusBars.add(WindowInsets(top = 90.dp)).asPaddingValues(),
             modifier = Modifier
@@ -57,7 +56,15 @@ fun Messages(
                 val content = messages[index]
                 val isFirstMessageByTime = preTime != content.timestamp
                 val isLastMessageByTime = nextTime != content.timestamp
-
+                /**
+                 * 消息[index=0],isFirstMessageByTime: true, isLastMessageByTime: true
+                 * 消息[index=1],isFirstMessageByTime: true, isLastMessageByTime: true
+                 * 消息[index=2],isFirstMessageByTime: true, isLastMessageByTime: false
+                 * 消息[index=3],isFirstMessageByTime: false, isLastMessageByTime: true
+                 * 消息[index=4],isFirstMessageByTime: true, isLastMessageByTime: true
+                 * 消息[index=5],isFirstMessageByTime: true, isLastMessageByTime: true
+                 */
+                println("消息[index=$index],isFirstMessageByTime: $isFirstMessageByTime, isLastMessageByTime: $isLastMessageByTime")
                 // Hardcode day dividers for simplicity
                 if (index == messages.size - 1) {
                     item {
@@ -108,6 +115,8 @@ fun Message(
                     .padding(horizontal = 16.dp)
                     .size(42.dp)
                     .border(1.5.dp, borderColor, CircleShape)
+                    // Optimize: 第二次再执行一次border的话，效果并不会覆盖前一个设置好的border，是在前一个border的基础上再加一层border，
+                    //  而从表现上看是处于前一个border的“底层”，最终多图层叠加后是前一个在上面（理解成前者border优先级高，覆盖后者）
                     .border(3.dp, MaterialTheme.colorScheme.surface, CircleShape)
                     .clip(CircleShape)
                     .align(Alignment.Top),
@@ -146,7 +155,7 @@ fun AuthorAndTextMessage(
         if (isLastMessageByTime) {
             AuthorNameTimestamp(msg)
         }
-        ChatItemBubble(msg, isUserMe)
+        ChatItemBubble(msg, isUserMe, authorClicked)
         if (isFirstMessageByTime) {
             // Last bubble before next author
             Spacer(modifier = Modifier.height(8.dp))
@@ -162,17 +171,23 @@ private fun AuthorNameTimestamp(msg: Message) {
     // Combine author and timestamp for a11y.
     Row(modifier = Modifier.semantics(mergeDescendants = true) {}) {
         Text(
-            text = if (msg.isUserMe) stringResource(id = R.string.author_me) else LocalConversationUser.current.nickname,
+            text = if (msg.isUserMe) stringResource(id = R.string.author_me/*R.string.author_me_lines*/) else LocalConversationUser.current.nickname,
             style = MaterialTheme.typography.titleMedium,
+            // Optimize: 这里是更加精确的定位到最后一行的baseline，是一种底部基线对齐的方式并且再往下padding 8dp（marginBottom的意思）
             modifier = Modifier
                 .alignBy(LastBaseline)
-                .paddingFrom(LastBaseline, after = 8.dp), // Space to 1st bubble
+                .paddingFrom(LastBaseline, after = 8.dp), // 为了看效果最好把值设置大一些，比如58dp
             color = MaterialTheme.chattyColors.textColor
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = msg.timestamp,
+            /*text = """
+                ${msg.timestamp}
+                ${msg.timestamp}
+                ${msg.timestamp}""".trimIndent()*/
             style = MaterialTheme.typography.titleSmall.copy(color = MaterialTheme.chattyColors.conversationHintText),
+            // Optimize: 同样也是应该以基线对齐，但是这里是以上一个Text的最后一行基线对齐（有种约束布局链的感觉）
             modifier = Modifier.alignBy(LastBaseline),
         )
     }
@@ -212,7 +227,8 @@ private fun RowScope.DayHeaderLine() {
 @Composable
 fun ChatItemBubble(
     message: Message,
-    isUserMe: Boolean
+    isUserMe: Boolean,
+    authorClicked: () -> Unit = {}
 ) {
 
     val backgroundBubbleColor = if (isUserMe) {
@@ -230,6 +246,7 @@ fun ChatItemBubble(
             ClickableMessage(
                 message = message,
                 isUserMe = isUserMe,
+                authorClicked
             )
         }
 
@@ -255,6 +272,7 @@ fun ChatItemBubble(
 fun ClickableMessage(
     message: Message,
     isUserMe: Boolean,
+    authorClicked: () -> Unit = {}
 ) {
     val uriHandler = LocalUriHandler.current
 
@@ -275,9 +293,10 @@ fun ClickableMessage(
                 .getStringAnnotations(start = it, end = it)
                 .firstOrNull()
                 ?.let { annotation ->
+                    /** 这是上面的messageFormatter方法给你预整了两个带注解的标识，这里是直接拿着用 */
                     when (annotation.tag) {
                         SymbolAnnotationType.LINK.name -> uriHandler.openUri(annotation.item)
-//                        SymbolAnnotationType.PERSON.name -> if (!isUserMe) authorClicked()
+                        SymbolAnnotationType.PERSON.name -> if (!isUserMe) authorClicked()
                         else -> Unit
                     }
                 }

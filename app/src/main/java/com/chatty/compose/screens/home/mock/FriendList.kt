@@ -40,8 +40,13 @@ val recentMessages = mutableStateListOf(
     MessageItemData(friends[5], "在嘛？有空吗？", 4),
     MessageItemData(friends[6], "有一说一，确实"),
     MessageItemData(friends[10], "啊对对对"),
-    MessageItemData(friends[11], "我觉得香辣鸡腿堡是真的好吃"),
-    MessageItemData(friends[12], "等会见")
+    MessageItemData(friends[12], "吃了"),
+    MessageItemData(friends[13], "有内鬼，停止交易"),
+    MessageItemData(friends[14], "计划有变"),
+    MessageItemData(friends[15], "我觉得香辣鸡腿堡是真的好吃"),
+    MessageItemData(friends[16], "执行A计划"),
+    MessageItemData(friends[17], "执行B计划"),
+    MessageItemData(friends[18], "等会见")
 )
 
 var displayMessages by mutableStateOf( recentMessages.toMutableList() )

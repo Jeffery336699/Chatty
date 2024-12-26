@@ -68,10 +68,13 @@ private object DarkColors : IChattyColors {
     override val disabledContent = Color.White.copy(0.5f)
 }
 
+// ChattyColors才是暴露给外部使用的，ChattyColors内部维护了一个isLight的状态，用于切换主题；
+// 同时明亮和暗色主题的颜色值公用的采用IChattyColors接口定义，非公用的则在ChattyColors中定义(eg: isLight、toggleToLightColor等)
 class ChattyColors : IChattyColors {
     var isLight by mutableStateOf(true)
         private set
 
+    // 借助 derivedStateOf 来优化重组次数，只有在 isLight 变化时才会重组
     private val _curColors by derivedStateOf {
         if (isLight) LightColors else DarkColors
     }
@@ -83,7 +86,7 @@ class ChattyColors : IChattyColors {
 
     fun toggleToLightColor() { isLight = true }
     fun toggleToDarkColor() { isLight = false }
-
+    // 由于动画是@Composable修饰，所以需要在@Composable函数中调用，即属性的getter方法需要标准为@Composable
     override val backgroundColor @Composable get() = animatedValue(_curColors.backgroundColor)
     override val textColor @Composable get() = animatedValue(_curColors.textColor)
     override val iconColor @Composable get() = animatedValue(_curColors.iconColor)
@@ -170,14 +173,17 @@ fun ChattyTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable
     } else {
         chattyColors.toggleToLightColor()
     }
+    // 在顶层提供ChattyColors，这样所有的子组件都可以通过LocalChattyColors.current来获取ChattyColors（类似Flutter的继承Widget从顶部往下隐式传参）
     CompositionLocalProvider(LocalChattyColors provides chattyColors) {
         MaterialTheme(
             content = content,
+            // Optimize: 系统维护的主题颜色类型是ColorScheme，而我们自己维护的主题颜色类型是ChattyColors
             colorScheme = if (chattyColors.isLight) MD_LightColors else MD_DarkColors
         )
     }
 }
 
+// 直接以一个动画渐进到目标值颜色，这样就不会有突变的感觉，妙哉
 @Composable
 private fun animatedValue(targetValue: Color) = animateColorAsState(
     targetValue = targetValue,

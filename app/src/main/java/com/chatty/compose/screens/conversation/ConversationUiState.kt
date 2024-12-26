@@ -23,6 +23,7 @@ class ConversationUiState(
     val conversationUserId: String,
     initialMessages: List<Message>
 ) {
+    // List类型转为MutableList类型,一般先转为Array数组类型，再打散转为MutableList类型（达到一种copy效果，不会影响原来的List数据集）
     private val _messages: MutableList<Message> =
         mutableStateListOf(*initialMessages.toTypedArray())
     val messages: List<Message> = _messages

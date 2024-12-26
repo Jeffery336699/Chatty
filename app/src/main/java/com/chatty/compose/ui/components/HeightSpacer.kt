@@ -9,4 +9,4 @@ import androidx.compose.ui.unit.Dp
 @Composable
 fun HeightSpacer(
     value: Dp
-) = Spacer(modifier = Modifier.padding(vertical = value))
+) = Spacer(modifier = Modifier.padding(vertical = value)) // 用于垂直方向的间距,实则两倍的value！！

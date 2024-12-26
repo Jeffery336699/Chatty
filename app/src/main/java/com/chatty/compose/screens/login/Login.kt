@@ -33,11 +33,10 @@ fun Login() {
     val navController = LocalNavController.current
     val keyboardController = LocalSoftwareKeyboardController.current
     var openDropMenu by remember { mutableStateOf(false) }
-
+    // rememberSaveable会在配置变更、进程重启等情况下保存变量的值，在remember的基础上增加了持久化的功能
     var username by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
     var passwordHidden by rememberSaveable { mutableStateOf(true) }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -99,6 +98,7 @@ fun Login() {
                 },
                 modifier = Modifier.fillMaxWidth(),
                 shape =  RoundedCornerShape(8.dp),
+
                 visualTransformation = if(passwordHidden) PasswordVisualTransformation() else VisualTransformation.None,
                 trailingIcon = {
                     IconButton(
@@ -124,6 +124,8 @@ fun Login() {
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 10.dp),
                 shape = RoundedCornerShape(8.dp)
             ) {
+                // Optimize: 一般是不要瞎鸡儿设置tint,因为内部采用的是LocalContentColor.current，
+                //  这样在不同的主题下就没法做到一键切换color了（底层还是借助自上而下的隐式传参）
                 Icon(painterResource(R.drawable.login), null)
                 WidthSpacer(5.dp)
                 Text("登入")

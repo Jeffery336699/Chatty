@@ -44,7 +44,8 @@ fun ConversationScreen(
 
     Surface(modifier = modifier) {
         Box(modifier = Modifier.fillMaxSize()) {
-
+            // Optimize: LocalInspectionMode是一个CompositionLocal，用于检查当前是否处于“工具检测模式”（如 Android Studio 的预览模式）;
+            //  适用于需要对预览模式进行特殊处理的场景，比如在工具中显示占位符数据或避免执行需要完整运行环境的逻辑（如网络请求或导航操作）。
             val navController =
                 if (LocalInspectionMode.current) rememberNavController()
                 else LocalNavController.current
@@ -59,12 +60,13 @@ fun ConversationScreen(
                     Messages(
                         messages = uiState.messages,
                         navigateToProfile = { navController.navigate("${AppScreen.userProfile}/${uiState.conversationUserId}") },
+                        // Optimize: 在Row/Column中使用Modifier.weight(1f)可以使得Row/Column占据剩余空间(后优先级，等其他组件占据完空间后再占据剩余空间)
                         modifier = Modifier.weight(1f),
                         scrollState = scrollState
                     )
                 }
 
-
+                // TODO: 这里是聊天输入框UI及自定义emoji面板等，属于难点最后再看
                 UserInput(
                     onMessageSent = { content ->
                         uiState.addMessage(
