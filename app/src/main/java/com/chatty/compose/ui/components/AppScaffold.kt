@@ -1,20 +1,14 @@
 package com.chatty.compose.ui.components
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
 import com.chatty.compose.screens.home.Home
 import com.chatty.compose.screens.contracts.Contracts
 import com.chatty.compose.screens.drawer.PersonalProfile
 import com.chatty.compose.screens.explorer.Explorer
-import com.chatty.compose.ui.theme.green
 import com.google.accompanist.pager.ExperimentalPagerApi
 import com.google.accompanist.pager.HorizontalPager
 import com.google.accompanist.pager.rememberPagerState

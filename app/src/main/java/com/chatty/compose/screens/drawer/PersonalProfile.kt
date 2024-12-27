@@ -22,10 +22,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
 import androidx.constraintlayout.compose.Dimension
+import com.android.internal.R.id.radio
 import com.chatty.compose.AppTheme
 import com.chatty.compose.R
 import com.chatty.compose.bean.UserProfileData
@@ -72,6 +74,7 @@ fun getCurrentLoginUserProfile(): UserProfileData {
     return friends[0]
 }
 
+@Preview
 @Composable
 fun PersonalProfileHeader() {
     val currentUser = getCurrentLoginUserProfile()
@@ -83,9 +86,10 @@ fun PersonalProfileHeader() {
     ) {
         val (portraitImageRef, usernameTextRef, desTextRef) = remember { createRefs() }
         Image(
-            painter = painterResource(id = currentUser.avatarRes),
+            painter = painterResource(id = currentUser.avatarRes/*R.drawable.ava5*/),
             contentDescription = "portrait",
-            modifier = Modifier
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.aspectRatio(1f) // 针对非正方形的图片，设置宽高比为1:1就能借助CircleShape轻松实现圆形效果
                 .constrainAs(portraitImageRef) {
                     top.linkTo(parent.top)
                     bottom.linkTo(parent.bottom)
@@ -107,7 +111,7 @@ fun PersonalProfileHeader() {
                 }
         )
         Text(
-            text = currentUser.motto,
+            text = currentUser.motto.repeat(1),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             fontSize = 18.sp,
@@ -115,8 +119,9 @@ fun PersonalProfileHeader() {
             modifier = Modifier
                 .constrainAs(desTextRef) {
                     top.linkTo(usernameTextRef.bottom, 10.dp)
-                    start.linkTo(portraitImageRef.end, 10.dp)
-                    end.linkTo(parent.end)
+                    // Optimize: 终于找到bias这个属性了，结合width/height的preferredWrapContent简直完美
+                    //  【compose中ConstraintLayout布局的优势并没Row/Column的简单组合优势大，郭霖大神说的】
+                    linkTo(start = portraitImageRef.end, end = parent.end, startMargin = 10.dp, bias = 0f)
                     width = Dimension.preferredWrapContent
                 }
         )

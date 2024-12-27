@@ -36,7 +36,6 @@ import com.google.accompanist.navigation.animation.AnimatedNavHost
 import com.google.accompanist.navigation.animation.composable
 import com.google.accompanist.navigation.animation.rememberAnimatedNavController
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import kotlinx.coroutines.delay
 
 class MainActivity : ComponentActivity() {
 
@@ -162,7 +161,7 @@ fun ChattyNavHost(navController: NavHostController) {
             enterTransition = null,
             exitTransition = null
         ) { backStackEntry ->
-            var category = backStackEntry.arguments?.getString("category")!!
+            val category = backStackEntry.arguments?.getString("category")!!
             PersonalProfileEditor(category)
         }
         composable(AppScreen.addFriends) {

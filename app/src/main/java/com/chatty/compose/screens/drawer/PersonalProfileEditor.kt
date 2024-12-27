@@ -19,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.android.internal.R.attr.maxLines
+import com.android.internal.R.attr.textStyle
 import com.chatty.compose.R
 import com.chatty.compose.ui.components.*
 import com.chatty.compose.ui.theme.green
@@ -68,13 +70,16 @@ fun PersonalProfileEditor(attr: String) {
                     fontSize = 20.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.padding(start = 20.dp)
+                    modifier = Modifier.padding(start = 20.dp) // 它是被置于Box中，Box给其align(Alignment.Center),在这个基础上还start偏移20.dp
                 )
             },
             end =  {
                 if (!isQRCode) {
                     Button(
-                        onClick = { navController.navigate(AppScreen.main) },
+                        // Optimize: 注意它的顺序是先走builder里面，也就是先清空栈再跳转，所以能这么玩达到跳转主页并且关掉drawer的目的（后续有想到好的方法再调整）
+                        onClick = { navController.navigate(AppScreen.main){
+                            popUpTo(AppScreen.main) { inclusive = true }
+                        } },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = green
                         ),
@@ -107,9 +112,14 @@ fun ProfileInputField() {
         onValueChange = {
             inputText = it
         },
+        // Optimize: 一定得好好体会这个padding，设置在宽/高前就是margin的效果，设置在宽/高后就是padding的效果；
+        //  同时后续的content是在padding后的区域内，这个跟传统View是一致的（compose在默认没有设置宽高的情况下是wrapContent）
         modifier = Modifier
+            .padding(10.dp)
             .fillMaxWidth()
-            .padding(horizontal = 20.dp)
+            .background(green)
+            .padding(20.dp)
+            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
             .focusRequester(focusRequester),
         maxLines = 1,
         textStyle = TextStyle(
