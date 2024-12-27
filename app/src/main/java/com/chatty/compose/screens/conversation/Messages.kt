@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import com.chatty.compose.R
 import com.chatty.compose.ui.components.AppScreen
 import com.chatty.compose.ui.theme.chattyColors
+import com.chatty.compose.ui.utils.customBorder
 
 
 @Composable
@@ -65,7 +66,6 @@ fun Messages(
                  * 消息[index=5],isFirstMessageByTime: true, isLastMessageByTime: true
                  */
                 println("消息[index=$index],isFirstMessageByTime: $isFirstMessageByTime, isLastMessageByTime: $isLastMessageByTime")
-                // Hardcode day dividers for simplicity
                 if (index == messages.size - 1) {
                     item {
                         DayHeader("8月20日")
@@ -111,7 +111,7 @@ fun Message(
             // Avatar
             Image(
                 modifier = Modifier
-                    .clickable(onClick = onAuthorClick)
+                    .clickable(enabled = !isUserMe, onClick = onAuthorClick)
                     .padding(horizontal = 16.dp)
                     .size(42.dp)
                     .border(1.5.dp, borderColor, CircleShape)
@@ -151,7 +151,7 @@ fun AuthorAndTextMessage(
     authorClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Column(modifier = modifier) {
+    Column(modifier = modifier/*.customBorder()*/) {
         if (isLastMessageByTime) {
             AuthorNameTimestamp(msg)
         }
@@ -215,7 +215,6 @@ fun DayHeader(dayString: String) {
 
 @Composable
 private fun RowScope.DayHeaderLine() {
-    // TODO (M3): No Divider, replace when available
     Divider(
         modifier = Modifier
             .weight(1f)
@@ -241,7 +240,7 @@ fun ChatItemBubble(
         Surface(
             color = backgroundBubbleColor,
             shape = ChatBubbleShape,
-            shadowElevation = ConvasationBublblElevation
+            shadowElevation = ConvasationBubbleElevation
         ) {
             ClickableMessage(
                 message = message,
@@ -255,7 +254,7 @@ fun ChatItemBubble(
             Surface(
                 color = backgroundBubbleColor,
                 shape = ChatBubbleShape,
-                shadowElevation = ConvasationBublblElevation
+                shadowElevation = ConvasationBubbleElevation
             ) {
                 Image(
                     painter = painterResource(it),
@@ -275,9 +274,8 @@ fun ClickableMessage(
     authorClicked: () -> Unit = {}
 ) {
     val uriHandler = LocalUriHandler.current
-
     val styledMessage = messageFormatter(
-        text = message.content,
+        text = String.format(message.content, LocalConversationUser.current.nickname),
         primary = isUserMe
     )
 
@@ -304,5 +302,4 @@ fun ClickableMessage(
     )
 }
 
-
-private val ConvasationBublblElevation = 5.dp
+private val ConvasationBubbleElevation = 5.dp

@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.FirstBaseline
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.SemanticsPropertyKey
 import androidx.compose.ui.semantics.SemanticsPropertyReceiver
@@ -55,8 +56,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.chatty.compose.R
+import com.chatty.compose.ui.theme.ChattyColors
 import com.chatty.compose.ui.theme.chattyColors
 import com.chatty.compose.ui.utils.FunctionalityNotAvailablePopup
+import com.chatty.compose.ui.utils.customBorder
+import kotlinx.coroutines.delay
 
 enum class InputSelector {
     NONE,
@@ -86,12 +90,12 @@ fun UserInput(
 ) {
     var currentInputSelector by rememberSaveable { mutableStateOf(InputSelector.NONE) }
     val dismissKeyboard = { currentInputSelector = InputSelector.NONE }
-
+    val focusManager = LocalFocusManager.current
     // Intercept back navigation if there's a InputSelector visible
     if (currentInputSelector != InputSelector.NONE) {
         BackPressHandler(onBackPressed = dismissKeyboard)
     }
-
+    // Optimize: 相当于把TextField的文本能力再次提取出来，这样可以更好的控制TextField的文本（eg.textState.addText..）
     var textState by remember { mutableStateOf(TextFieldValue()) }
 
     // Used to decide if the keyboard should be shown
@@ -99,9 +103,16 @@ fun UserInput(
 
     Surface(shadowElevation = 2.dp) {
         Column(modifier = modifier) {
-            Row(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .customBorder(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 UserInputText(
-                    Modifier.weight(1.0f),
+                    Modifier
+                        .weight(1.0f)
+                        .customBorder(color = Color.Blue),
                     textFieldValue = textState,
                     onTextChanged = { textState = it },
                     // Only show the keyboard if there's no input selector and text field has focus
@@ -116,6 +127,7 @@ fun UserInput(
                     },
                     focusState = textFieldFocusState,
                     onMessageSent = {
+                        focusManager.clearFocus()
                         onMessageSent(textState.text)
                         // Reset text field and close keyboard
                         textState = TextFieldValue()
@@ -126,7 +138,17 @@ fun UserInput(
                 )
                 UserInputSelector(
                     onSelectorChange = { currentInputSelector = it },
-                    currentInputSelector = currentInputSelector
+                    currentInputSelector = currentInputSelector,
+                    onMessageSent = {
+                        // Optimize: 失去焦点，貌似这要写到前面才能把hint中文本置空（实则下面新构建TextFieldValue()就行）
+                        focusManager.clearFocus()
+                        onMessageSent(textState.text)
+                        // Reset text field and close keyboard
+                        textState = TextFieldValue()
+                        // Move scroll to bottom
+                        resetScroll()
+                        dismissKeyboard()
+                    }
                 )
             }
 
@@ -159,9 +181,9 @@ private fun SelectorExpanded(
 ) {
     if (currentSelector == InputSelector.NONE) return
 
-    // Request focus to force the TextField to lose it
+    // 请求focus以强制 TextField 丢失它的焦点
     val focusRequester = FocusRequester()
-    // If the selector is shown, always request focus to trigger a TextField.onFocusChange.
+    // 采用SideEffect来实现副作用，这里是请求focus（保证重组成功的情况下，抢夺TextField的焦点）
     SideEffect {
         if (currentSelector == InputSelector.EMOJI) {
             focusRequester.requestFocus()
@@ -182,8 +204,15 @@ private fun SelectorExpanded(
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun FunctionalityNotAvailablePanel() {
+    val transitionState = remember {
+        MutableTransitionState(false).apply {
+            targetState = true
+        }
+    }
+    // Optimize: 手动给你触发动画，当false->true时，新的Composable执行进入动画
+    //  （如果当前Composable有配置退出动画的话，会执行退出动画）
     AnimatedVisibility(
-        visibleState = remember { MutableTransitionState(false).apply { targetState = true } },
+        visibleState = transitionState,
         enter = expandHorizontally() + fadeIn(),
         exit = shrinkHorizontally() + fadeOut()
     ) {
@@ -206,14 +235,22 @@ fun FunctionalityNotAvailablePanel() {
             )
         }
     }
+
+    // Optimize: 手动玩玩触发退出动画
+    // LaunchedEffect(Unit) {
+    //     delay(3000)
+    //     transitionState.targetState = false
+    // }
 }
 
 @Composable
 private fun UserInputSelector(
     onSelectorChange: (InputSelector) -> Unit,
     currentInputSelector: InputSelector,
+    onMessageSent: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val sendMessageEnabled by remember { mutableStateOf(true) }
     Row(
         modifier = modifier
             .height(72.dp)
@@ -234,36 +271,38 @@ private fun UserInputSelector(
             description = stringResource(id = R.string.attach_photo_desc)
         )
 
-//        val border = if (!sendMessageEnabled) {
-//            BorderStroke(
-//                width = 1.dp,
-//                color = ChattyColors.ConversationHintText
-//            )
-//        } else {
-//            null
-//        }
-//
-//        val buttonColors = ButtonDefaults.buttonColors(
-//            disabledContentColor = ChattyColors.DisabledContent
-//        )
-//
-//        // Send button
-//        Button(
-//            modifier = Modifier
-//                .height(36.dp)
-//                .weight(1.0f),
-//            enabled = sendMessageEnabled,
-//            onClick = onMessageSent,
-//            colors = buttonColors,
-//            border = border,
-//            contentPadding = PaddingValues(0.dp)
-//        ) {
-//            Text(
-//                stringResource(id = R.string.send),
-//                modifier = Modifier.padding(horizontal = 16.dp),
-//                color = ChattyColors.ConversationHintText
-//            )
-//        }
+        val border = if (!sendMessageEnabled) {
+            BorderStroke(
+                width = 1.dp,
+                color = MaterialTheme.chattyColors.conversationHintText
+            )
+        } else {
+            null
+        }
+
+        val buttonColors = ButtonDefaults.buttonColors(
+            disabledContentColor = MaterialTheme.chattyColors.disabledContent
+        )
+        val focusRequester = FocusRequester()
+        // Send button
+        Button(
+            modifier = Modifier
+                .height(36.dp)
+            /*.weight(1.0f)*/,
+            enabled = sendMessageEnabled,
+            onClick = {
+                onMessageSent()
+            },
+            colors = buttonColors,
+            border = border,
+            contentPadding = PaddingValues(0.dp)
+        ) {
+            Text(
+                stringResource(id = R.string.send),
+                modifier = Modifier.padding(horizontal = 16.dp),
+                color = MaterialTheme.chattyColors.conversationHintText
+            )
+        }
     }
 }
 
@@ -328,9 +367,10 @@ private fun UserInputText(
     ) {
         Box(
             modifier = Modifier
-                .background(MaterialTheme.chattyColors.backgroundColor)
+                .background(MaterialTheme.chattyColors.backgroundColor)/*.customBorder(Color.Red)*/
         ) {
             var lastFocusState by remember { mutableStateOf(false) }
+            // 使用较底层的TextField，更灵活的控制，但是需要自己处理hint等其他一些操作
             BasicTextField(
                 value = textFieldValue,
                 onValueChange = { onTextChanged(it) },
@@ -355,7 +395,7 @@ private fun UserInputText(
                 cursorBrush = SolidColor(LocalContentColor.current),
                 textStyle = LocalTextStyle.current.copy(color = LocalContentColor.current)
             )
-
+            // 手动添加hint
             if (textFieldValue.text.isEmpty() && !focusState) {
                 Text(
                     modifier = Modifier
@@ -375,7 +415,11 @@ fun EmojiSelector(
     focusRequester: FocusRequester
 ) {
     var selected by remember { mutableStateOf(EmojiStickerSelector.EMOJI) }
-
+    val isEmoji by remember {
+        derivedStateOf {
+            selected == EmojiStickerSelector.EMOJI
+        }
+    }
     val a11yLabel = stringResource(id = R.string.emoji_selector_desc)
     Column(
         modifier = Modifier
@@ -392,17 +436,20 @@ fun EmojiSelector(
             ExtendedSelectorInnerButton(
                 text = stringResource(id = R.string.emojis_label),
                 onClick = { selected = EmojiStickerSelector.EMOJI },
-                selected = true,
+                selected = isEmoji,
                 modifier = Modifier.weight(1f)
             )
             ExtendedSelectorInnerButton(
                 text = stringResource(id = R.string.stickers_label),
                 onClick = { selected = EmojiStickerSelector.STICKER },
-                selected = false,
+                selected = isEmoji.not(),
                 modifier = Modifier.weight(1f)
             )
         }
-        Row(modifier = Modifier.verticalScroll(rememberScrollState())) {
+        // 实现Row的可以垂直滚动除了添加verticalScroll，还需要添加rememberScrollState以及height（保证内容超出高度达到可以滚动的条件，一般用于测试）
+        Row(modifier = Modifier
+            .height(200.dp)
+            .verticalScroll(rememberScrollState())) {
             EmojiTable(onTextAdded, modifier = Modifier.padding(8.dp))
         }
     }
@@ -426,7 +473,7 @@ fun ExtendedSelectorInnerButton(
     val colors = ButtonDefaults.buttonColors(
         contentColor = MaterialTheme.chattyColors.conversationHintText,
         disabledContentColor = MaterialTheme.chattyColors.conversationHintText,
-        containerColor = MaterialTheme.chattyColors.backgroundColor,
+        containerColor = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.3f) else Color.White,
         disabledContainerColor = Color.White
     )
     TextButton(
@@ -434,7 +481,7 @@ fun ExtendedSelectorInnerButton(
         modifier = modifier
             .padding(8.dp)
             .height(36.dp),
-        enabled = selected,
+        enabled = true,
         colors = colors,
         contentPadding = PaddingValues(0.dp),
         shape = RoundedCornerShape(30.dp),
@@ -452,13 +499,13 @@ fun EmojiTable(
     modifier: Modifier = Modifier
 ) {
     Column(modifier.fillMaxWidth()) {
-        repeat(4) { x ->
+        repeat(8) { x ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 repeat(EMOJI_COLUMNS) { y ->
-                    val emoji = emojis[x * EMOJI_COLUMNS + y]
+                    val emoji = emojis[(x % 4) * EMOJI_COLUMNS + y]
                     Text(
                         modifier = Modifier
                             .clickable(onClick = { onTextAdded(emoji) })

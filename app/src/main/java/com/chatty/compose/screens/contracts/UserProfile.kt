@@ -1,14 +1,38 @@
 package com.chatty.compose.screens.contracts
 
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Divider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -17,11 +41,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.constraintlayout.compose.ConstraintLayout
+import androidx.constraintlayout.compose.Dimension
 import com.chatty.compose.R
 import com.chatty.compose.bean.UserProfileData
 import com.chatty.compose.ui.components.HeightSpacer
 import com.chatty.compose.ui.components.WidthSpacer
 import com.chatty.compose.ui.theme.chattyColors
+import com.chatty.compose.ui.utils.customBorder
 import com.chatty.compose.ui.utils.drawLoginStateRing
 
 
@@ -69,6 +95,7 @@ fun fetchUserOnlineStatus(uid: String): Boolean {
 @Composable
 fun UserProfileHeader(user: UserProfileData) {
     Column(
+        modifier = Modifier.customBorder(),
         horizontalAlignment = Alignment.CenterHorizontally){
         Box(modifier = Modifier
             .fillMaxWidth()
@@ -78,10 +105,12 @@ fun UserProfileHeader(user: UserProfileData) {
             Image(
                 painter = painterResource(id = user.avatarRes),
                 contentDescription = "avatar",
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(150.dp)
+                    .customBorder()
                     .drawLoginStateRing(fetchUserOnlineStatus(user.uid))
-                    .clip(CircleShape)
+                    .clip(CircleShape) // CircleShape底层就是按照Size的50%裁剪的，所以必定是圆形了不用担心👍
             )
         }
         Text(
@@ -153,7 +182,7 @@ fun UserProfileHeader(user: UserProfileData) {
 }
 @Composable
 fun UserProfileDetail(user: UserProfileData) {
-    Column(Modifier.fillMaxWidth()) {
+    Column(Modifier.fillMaxWidth().customBorder()) {
         Text(
             text = "用户详情",
             fontSize = 25.sp,
@@ -243,12 +272,14 @@ fun UserProfileDetail(user: UserProfileData) {
                 color = MaterialTheme.chattyColors.textColor
             )
             Text(
-                text = user.email ?: "未知",
+                text = user.email ?: "窗前明月光，疑是地上霜。".repeat(3),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.constrainAs(emailRef) {
                     top.linkTo(emailTitleRef.top)
                     start.linkTo(barrier, barrierDistance)
+                    end.linkTo(parent.end)
+                    width = Dimension.preferredWrapContent
                 },
                 color = MaterialTheme.chattyColors.textColor
             )

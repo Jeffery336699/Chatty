@@ -17,5 +17,6 @@
     <string name="message">消息</string>
     <string name="contract">通讯录</string>
     <string name="explore">发现</string>
+    <string name="send">send</string>
 
 </resources>
