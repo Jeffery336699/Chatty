@@ -30,6 +30,8 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.chatty.compose.R
 import com.chatty.compose.bean.UserProfileData
 import com.chatty.compose.screens.home.mock.friends
@@ -37,17 +39,66 @@ import com.chatty.compose.ui.components.*
 import com.chatty.compose.ui.theme.chattyColors
 import com.chatty.compose.ui.utils.LocalNavController
 import com.chatty.compose.ui.utils.customBorder
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import java.util.*
 import kotlin.math.max
 
 
-class AddFriendsViewModel() {
+class AddFriendsViewModel : ViewModel() {
     var isSearching by mutableStateOf(false)
     var isLoading by mutableStateOf(false)
     var searchContent by mutableStateOf("")
+
+    private val _query = MutableStateFlow("")
+    val query = _query.asStateFlow()
+
+    private val _searchResults = MutableStateFlow<List<UserProfileData>>(emptyList())
+    val searchResults = _searchResults.asStateFlow()
+
+    init {
+        // 防抖功能 + 搜索逻辑
+        _query
+            .debounce(300) // 延迟300ms的防抖操作
+            .filter { it.isNotBlank() } // 空字符不触发搜索
+            .distinctUntilChanged() // 去除重复输入
+            .flatMapLatest { query ->
+                search(query) // 模拟搜索方法
+            }
+            .flowOn(Dispatchers.IO)
+            .onEach { results ->
+                _searchResults.value = results
+            }
+            .launchIn(viewModelScope)
+    }
+
+    fun onQueryChange(newQuery: String) {
+        _query.value = newQuery
+    }
+
+    private fun search(query: String): Flow<List<UserProfileData>> {
+        return flow {
+            delay(700) // 模拟网络延迟
+            val currentResult = friends.filter {
+                it.nickname.lowercase(Locale.getDefault()).contains(query,true)
+            }.toMutableList()
+            emit(currentResult)
+            isLoading = false
+        }
+    }
+
     // 内部的数据状态、数据流、逻辑操作统一到viewModel层，单一数据源便于更好的管理（MVI）
     var displaySearchUsersFlow = MutableStateFlow<List<UserProfileData>>(listOf())
     suspend fun refreshFriendSearched() {
@@ -61,19 +112,20 @@ class AddFriendsViewModel() {
 
     fun clearSearchStatus() {
         displaySearchUsersFlow.tryEmit(emptyList())
+        _searchResults.tryEmit(emptyList())
         searchContent = ""
+        onQueryChange("")
         isLoading = false
         isSearching = false
     }
 }
-
-
 
 @Composable
 fun AddFriends(viewModel: AddFriendsViewModel) {
     val naviController = LocalNavController.current
     // 通过collectAsState()来获取Flow的最新值,同样是响应式的（只要是State包裹）
     val displaySearchUsers = viewModel.displaySearchUsersFlow.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -93,8 +145,17 @@ fun AddFriends(viewModel: AddFriendsViewModel) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally), color = MaterialTheme.chattyColors.textColor)
             }
             LazyColumn {
-                displaySearchUsers.value.forEach {
-                    item(it.uid) {
+                // displaySearchUsers.value.forEach {
+                //     item(it.uid) {
+                //         FriendItem(avatarRes = it.avatarRes, friendName = it.nickname, motto = it.motto) {
+                //             naviController.navigate("${AppScreen.strangerProfile}/${it.uid}/用户名搜索")
+                //         }
+                //     }
+                // }
+
+                // Optimize: 实时搜索+防抖
+                searchResults.forEach {
+                    item(it.uid){
                         FriendItem(avatarRes = it.avatarRes, friendName = it.nickname, motto = it.motto) {
                             naviController.navigate("${AppScreen.strangerProfile}/${it.uid}/用户名搜索")
                         }
@@ -133,14 +194,14 @@ fun AddFriendTopBar() {
 fun SearchFriendBar(viewModel: AddFriendsViewModel) {
     val scope = rememberCoroutineScope()
     val focusManager = LocalFocusManager.current
+    val query by viewModel.query.collectAsState()
+
     SubcomposeSearchFriendRow(
         modifier = Modifier.padding(horizontal = 10.dp),
         textField = {
             BasicTextField(
-                value = viewModel.searchContent,
-                onValueChange = {
-                    viewModel.searchContent = it
-                },
+                value = query,
+                onValueChange = { viewModel.onQueryChange(it) },
                 modifier = Modifier
                     .height(50.dp)
                     .border(1.dp, MaterialTheme.chattyColors.textColor, RoundedCornerShape(5.dp))
