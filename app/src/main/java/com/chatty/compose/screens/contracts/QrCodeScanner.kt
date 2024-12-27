@@ -76,7 +76,7 @@ fun QRCodeScanner() {
             val captureCallback = OnCaptureCallback {
                 // 待处理
                 if (it.startsWith(USER_CODE_PREFIX)) {
-                    var uid = it.removePrefix(USER_CODE_PREFIX)
+                    val uid = it.removePrefix(USER_CODE_PREFIX)
                     naviController.navigate("${AppScreen.strangerProfile}/${uid}/二维码搜索")
                 }
                 // restartPreviewAndDecode()
@@ -145,7 +145,7 @@ fun QRCodeScanner() {
 
 @Composable
 fun QrCodeScanTopBar() {
-    var naviController = LocalNavController.current
+    val naviController = LocalNavController.current
     TopBar(
         start = {
             IconButton(onClick = {

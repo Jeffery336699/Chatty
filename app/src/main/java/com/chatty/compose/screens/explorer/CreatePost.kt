@@ -12,11 +12,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import com.android.internal.R.id.placeholder
 import com.chatty.compose.R
 import com.chatty.compose.ui.components.CenterRow
 import com.chatty.compose.ui.components.CircleShapeImage
 import com.chatty.compose.ui.components.WidthSpacer
 import com.chatty.compose.ui.utils.LocalNavController
+import com.chatty.compose.ui.utils.customBorder
 import com.chatty.compose.ui.utils.hideIME
 import kotlinx.coroutines.launch
 
@@ -79,10 +81,16 @@ fun CreatePost() {
                         focusedIndicatorColor = Color.Transparent,
                         containerColor = Color.Transparent
                     ),
+                    /**
+                     * Modifier.navigationBarsPadding().imePadding():
+                     * 1. 这两个东西是动态的，会根据键盘的弹出和隐藏而变化
+                     * 2. 会根据是否有导航栏来决定padding的大小
+                     * 3. 明显写在宽、高前面是作为margin作用的（总体可以拿系统模拟器试试）
+                     */
                     modifier = Modifier
                         .navigationBarsPadding()
                         .imePadding()
-                        .fillMaxSize(),
+                        .fillMaxSize().customBorder(),
                     placeholder = {
                         Text("最近发生了什么有意思的事情？", modifier = Modifier.alpha(0.5f))
                     }

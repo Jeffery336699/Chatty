@@ -36,6 +36,7 @@ import com.chatty.compose.screens.home.mock.friends
 import com.chatty.compose.ui.components.*
 import com.chatty.compose.ui.theme.chattyColors
 import com.chatty.compose.ui.utils.LocalNavController
+import com.chatty.compose.ui.utils.customBorder
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -44,14 +45,15 @@ import kotlin.math.max
 
 
 class AddFriendsViewModel() {
-    var isSearching by mutableStateOf<Boolean>(false)
-    var isLoading by mutableStateOf<Boolean>(false)
-    var searchContent by mutableStateOf<String>("")
+    var isSearching by mutableStateOf(false)
+    var isLoading by mutableStateOf(false)
+    var searchContent by mutableStateOf("")
+    // 内部的数据状态、数据流、逻辑操作统一到viewModel层，单一数据源便于更好的管理（MVI）
     var displaySearchUsersFlow = MutableStateFlow<List<UserProfileData>>(listOf())
     suspend fun refreshFriendSearched() {
         delay(3000)
-        var currentResult = friends.filter {
-            it.nickname.lowercase(Locale.getDefault()).contains(searchContent)
+        val currentResult = friends.filter {
+            it.nickname.lowercase(Locale.getDefault()).contains(searchContent,true)
         }.toMutableList()
         displaySearchUsersFlow.emit(currentResult)
         isLoading = false
@@ -59,6 +61,7 @@ class AddFriendsViewModel() {
 
     fun clearSearchStatus() {
         displaySearchUsersFlow.tryEmit(emptyList())
+        searchContent = ""
         isLoading = false
         isSearching = false
     }
@@ -68,8 +71,9 @@ class AddFriendsViewModel() {
 
 @Composable
 fun AddFriends(viewModel: AddFriendsViewModel) {
-    var naviController = LocalNavController.current
-    var displaySearchUsers = viewModel.displaySearchUsersFlow.collectAsState()
+    val naviController = LocalNavController.current
+    // 通过collectAsState()来获取Flow的最新值,同样是响应式的（只要是State包裹）
+    val displaySearchUsers = viewModel.displaySearchUsersFlow.collectAsState()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -118,7 +122,9 @@ fun AddFriendTopBar() {
         center =  {
             Text("添加联系人", color = MaterialTheme.chattyColors.textColor)
         },
-        backgroundColor = MaterialTheme.chattyColors.backgroundColor,
+        // 去除默认的背景色和阴影
+        backgroundColor = Color.Transparent,
+        elevation = 0.dp,
         contentPadding = AppBarDefaults.ContentPadding
     )
 }
@@ -139,6 +145,9 @@ fun SearchFriendBar(viewModel: AddFriendsViewModel) {
                     .height(50.dp)
                     .border(1.dp, MaterialTheme.chattyColors.textColor, RoundedCornerShape(5.dp))
                     .onFocusChanged {
+                        // 默认刚进来什么都不操作的情况，仍会触发一次isFocused为false的事件
+                        // 111111111  isFocused: false
+                        println("111111111  isFocused: ${it.isFocused}")
                         viewModel.isSearching = it.isFocused
                         if (!viewModel.isSearching) {
                             viewModel.clearSearchStatus()
@@ -211,22 +220,34 @@ fun SearchFriendBar(viewModel: AddFriendsViewModel) {
 
 @Composable
 fun SubcomposeSearchFriendRow(modifier: Modifier, textField: @Composable () -> Unit, cancel: @Composable () -> Unit) {
+    /**
+     * SubcomposeLayout使用中仍要使用`subcompose`来获取Measurable,然后常规的measure、layout都是要的
+     * 它太强大与灵活了，可以根据兄弟组件的测量情况来动态的调整自己的测量constraint(But性能有稍微逊色)
+     */
     SubcomposeLayout(modifier) { constraints ->
-        var cancelMeasureables = subcompose("cancel") { cancel() }
+        val cancelMeasureables = subcompose("cancel") { cancel() }
         var cancelPlaceable: Placeable? = null
         if (cancelMeasureables.isNotEmpty()) {
             cancelPlaceable = cancelMeasureables.first().measure(constraints = constraints)
         }
-        var consumeWidth = cancelPlaceable?.width ?: 0
-        var textFieldMeasureables = subcompose("text_field") { textField() }.first()
-        var textFieldPlaceables = textFieldMeasureables.measure(
+        val consumeWidth = cancelPlaceable?.width ?: 0
+        /**
+         * 从没有聚集（取消当前没有）到聚焦（取消存在）：
+         *  22222  consumeWidth: 0 , constraints.maxWidth: 1028 , constraints.minWidth: 0
+         *  22222  consumeWidth: 152 , constraints.maxWidth: 1028 , constraints.minWidth: 0
+         */
+        println("22222  consumeWidth: $consumeWidth , constraints.maxWidth: ${constraints.maxWidth} , constraints.minWidth: ${constraints.minWidth}")
+        val textFieldMeasureables = subcompose("text_field") { textField() }.first()
+        // Optimize: 这里是自定义一种TextField的weight=1的伸缩效果，即TextField占据剩余的空间
+        val textFieldPlaceables = textFieldMeasureables.measure(
             constraints.copy(
                 minWidth = constraints.maxWidth - consumeWidth,
                 maxWidth = constraints.maxWidth - consumeWidth
             )
         )
-        var width = constraints.maxWidth
-        var height = max(cancelPlaceable?.height ?: 0, textFieldPlaceables.height)
+        val width = constraints.maxWidth
+        val height = max(cancelPlaceable?.height ?: 0, textFieldPlaceables.height)
+        // Optimize: 最终还是得确定当前layout的宽高（此时的是自定义Row容器），类似ViewGroup的setMeasuredDimension确定好最终宽高，以及子View的摆放位置
         layout(width, height) {
             textFieldPlaceables.placeRelative(0, 0)
             cancelPlaceable?.placeRelative(textFieldPlaceables.width, 0)
@@ -258,20 +279,21 @@ fun AddFriendsOtherWayItem(
     Box(modifier = Modifier
         .fillMaxWidth()
         .background(MaterialTheme.chattyColors.backgroundColor)
+        .padding(horizontal = 10.dp)
         .clickable {
             onClick()
         }
     ){
         CenterRow(
-            modifier = Modifier.padding(vertical = 8.dp, horizontal = 10.dp)
+            modifier = Modifier.padding(vertical = 8.dp)
         ) {
             Icon(
-                painter =  painterResource(id = R.drawable.qr_code),
+                painter =  painterResource(id = icon),
                 contentDescription = "qr_code",
                 tint = MaterialTheme.chattyColors.iconColor,
                 modifier = Modifier
                     .size(60.dp)
-                    .padding(12.dp)
+                    // .padding(12.dp)
             )
             WidthSpacer(value = 10.dp)
             Column{

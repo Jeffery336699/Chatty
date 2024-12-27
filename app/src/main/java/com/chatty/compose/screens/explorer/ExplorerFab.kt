@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material3.*
@@ -31,6 +32,7 @@ fun ExplorerFab(
                 .align(Alignment.BottomEnd),
             color = Color.Transparent
         ) {
+
             AnimatedContent(
                 targetState = targetState,
                 transitionSpec = {
@@ -55,6 +57,7 @@ fun ExplorerFab(
                             onClick = {
                                 arrowAction()
                             },
+                            shape = CircleShape,
                             modifier = Modifier.padding(10.dp)
                         ) {
                             Icon(painterResource(id = R.drawable.arrow_upward), null)

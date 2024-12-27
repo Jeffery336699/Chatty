@@ -25,7 +25,6 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun Explorer() {
-
     val lazyState = rememberLazyListState()
     val navController = LocalNavController.current
     val scope = rememberCoroutineScope()
@@ -46,7 +45,7 @@ fun Explorer() {
             } else 1f
         }
     }
-
+    println("firstItemSize:$firstItemSize, topBarAlpha: $topBarAlpha")
     Box(
         modifier = Modifier
             .fillMaxSize()

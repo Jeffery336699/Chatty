@@ -18,6 +18,7 @@ import com.chatty.compose.ui.components.CenterRow
 import com.chatty.compose.ui.components.CircleShapeImage
 import com.chatty.compose.ui.components.WidthSpacer
 import com.chatty.compose.ui.theme.chattyColors
+import com.chatty.compose.ui.utils.customBorder
 
 @Composable
 fun ExplorerTopBar(
@@ -35,7 +36,7 @@ fun ExplorerTopBar(
                 modifier = Modifier
                     .statusBarsPadding()
                     .padding(12.dp)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()/*.customBorder()*/,
                 horizontalArrangement = Arrangement.Center
             ) {
                 CircleShapeImage(size = 30.dp, painter = painterResource(id = R.drawable.ava4), contentScale = ContentScale.Crop)

@@ -50,7 +50,7 @@ fun PersonalProfile() {
             Modifier
                 .fillMaxWidth()
                 .height(200.dp)
-                .paint(
+                .paint( // 直接使用paint修饰符绘制背景图片，Painter加载资源一样绘制图片
                     painterResource(id = R.drawable.google_bg),
                     contentScale = ContentScale.FillBounds
                 ),

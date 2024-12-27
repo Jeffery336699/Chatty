@@ -179,11 +179,11 @@ fun ChattyNavHost(navController: NavHostController) {
             enterTransition = null,
             exitTransition = null
         ) { backStackEntry ->
-            var uid = backStackEntry.arguments?.getString("uid")!!
+            val uid = backStackEntry.arguments?.getString("uid")!!
             // 待改进
-            var user = friends.find { it.uid == uid }!!
+            val user = friends.find { it.uid == uid }!!
 
-            var fromSource = backStackEntry.arguments?.getString("from_source")!!
+            val fromSource = backStackEntry.arguments?.getString("from_source")!!
             StrangerProfile(user, fromSource)
         }
         composable(
