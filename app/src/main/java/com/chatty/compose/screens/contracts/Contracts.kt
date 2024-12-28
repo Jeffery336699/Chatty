@@ -152,11 +152,26 @@ fun Contracts() {
                         val newestAlphaIndex =
                             alphaCountPreSumList.searchLastElementIndex(object : Comparator<Int> {
                                 override fun compare(target: Int): Boolean {
+                                    // 上述LazyColumn先滚动到对应位置后，根据firstVisibleItemIndex计算出来的newestAlphaIndex当然与selectIndex相等
                                     return target <= lazyListState.firstVisibleItemIndex
                                 }
                             })
+                        // Optimize: 右侧bar点击到末尾‘#’，newestAlphaIndex: 7 , selectIndex: 10
+                        /**
+                         * 不是常态情况下：比如点击bar的最后一个‘#’，此时的selectIndex=10,但是lazyColumn计算出的newestAlphaIndex=7，最终bar显示的应该是newestAlphaIndex值
+                         * 典型的上层来决定下层的UI显示，因为下层有很多信息没有结合到（比如就算滚动到末尾，第一个显示的是对应的是‘S’,右侧bar当前只能显示到‘S’啰）
+                         */
+                        println("newestAlphaIndex: $newestAlphaIndex , selectIndex: $selectIndex")
                         currentSelectedAlphaIndex = newestAlphaIndex
+                        /**
+                         * 默认情况下：bar与列表的index是可以联动对应上的给个震动（发起方：右侧滑竿的操作）
+                         * 震动? newestAlphaIndex == selectIndex=0
+                         * 震动? newestAlphaIndex == selectIndex=1
+                         * 震动? newestAlphaIndex == selectIndex=4
+                         * 震动? newestAlphaIndex == selectIndex=3
+                         */
                         if (newestAlphaIndex == selectIndex) { // 没有出界才震动
+                            println("震动? newestAlphaIndex == selectIndex=$newestAlphaIndex")
                             context.vibrate(50)
                         }
                     }
@@ -255,6 +270,7 @@ fun AlphaGuildBar(alphaStates: MutableCollection<AlphaState>, updateSelectIndex:
     val density = LocalDensity.current
     var currentIndex by remember { mutableStateOf(-1) }
     var displayBox by remember { mutableStateOf(false) }
+    // offsetY的单位是dp哟，它的值是根据上述alphaItemHeight（单位dp）变动而来的
     var offsetY by remember { mutableStateOf(0f) }
     Row {
         if (displayBox) HoverBox(alphaStates, currentIndex, offsetY)
@@ -275,7 +291,7 @@ fun AlphaGuildBar(alphaStates: MutableCollection<AlphaState>, updateSelectIndex:
                          *  System.out               I  change.position.y: 55.555542
                          *  System.out               I  change.position.y: 57.333313
                          */
-                        println("change.position.y: ${change.position.y}")
+                        // println("change.position.y: ${change.position.y}")
                         currentIndex = (change.position.y / alphaItemHeight.toPx()).toInt()
                             .coerceIn(0, alphaStates.size - 1)
                     }
@@ -292,7 +308,10 @@ fun AlphaGuildBar(alphaStates: MutableCollection<AlphaState>, updateSelectIndex:
                         .background(if (alphaState.state.value) green else Color.Transparent)
                         .pointerInput(Unit) {
                             detectTapGestures(
-                                onPress = { currentIndex = index }
+                                onPress = {
+                                    currentIndex = index
+                                    println("点击了: currentIndex=$currentIndex")
+                                }
                             )
                         }
                 ) {
@@ -304,6 +323,10 @@ fun AlphaGuildBar(alphaStates: MutableCollection<AlphaState>, updateSelectIndex:
             }
         }
     }
+    /**
+     * 上述的currentIndex并没有在Composable内部做限制，而是把这个逻辑交给上层处理也就是采用接口回调的形式抛上去（很符合MVI的状态上移）
+     * 所以表现形式是：该滑动bar的最后一个字母显示与否是有上层Composable决定的
+     */
     LaunchedEffect(currentIndex) {
         if (currentIndex == -1) {
             return@LaunchedEffect
