@@ -48,6 +48,7 @@ fun StrangerProfile(user: UserProfileData, formSource: String) {
                 confirmDialogState = true
             },
                 modifier = Modifier
+                    .padding(horizontal = 20.dp, vertical = 10.dp)
                     .fillMaxWidth()
                     .height(50.dp),
                 colors = ButtonDefaults.buttonColors(
@@ -57,6 +58,7 @@ fun StrangerProfile(user: UserProfileData, formSource: String) {
                 Text(
                     text = "添加联系人",
                     fontSize = 15.sp,
+                    color = MaterialTheme.chattyColors.textColor,
                     fontWeight = FontWeight.ExtraBold,
                 )
             }

@@ -65,24 +65,28 @@ fun Contracts() {
     ) {
         ContractTopBar()
         val currentFriends = fetchLatestFriendsList()
-        val sortedFriends = remember(currentFriends){
+        val sortedFriends = remember(currentFriends) {
             currentFriends.groupBy {
-                val firstChar = Pinyin.toPinyin(it.nickname.first().toString(),"").first()
-                if (!firstChar.isLetter()) { '#' }
-                else {
+                val firstChar = Pinyin.toPinyin(it.nickname.first().toString(), "").first()
+                if (!firstChar.isLetter()) {
+                    '#'
+                } else {
                     firstChar.uppercaseChar()
                 }
-            }.toSortedMap { a: Char, b: Char ->
+            }.toSortedMap { a: Char, b: Char -> // Optimize: 这一层排序的对象是Map,针对的是对Key(Char)的排序
+                // Optimize: 注意a、b比较的时候，返回的是>0的话表示a（前者）排在后面，返回<0的话表示a排在前面
                 when {
                     a == b -> 0
                     a == '#' -> 1
-                    b == '#' -> -1
+                    b == '#' -> -1// a排在前面，换句话说不就是b排在后面
                     else -> a.compareTo(b)
                 }
             }.apply {
-                for((k, v) in entries) {
-                    put(k, v.sortedWith {
-                            a, b -> a.nickname.compareTo(b.nickname)
+                // 这里排序是对value(List)内部按照字母排序，这里不是直接对List对象排序
+                // 而是采用put覆盖的形式把排序好的value放回去（巧妙的利用copy思想，能避免多线程环境的并发问题）
+                for ((k, v) in entries) {
+                    put(k, v.sortedWith { a, b ->
+                        a.nickname.compareTo(b.nickname)
                     })
                 }
             }
@@ -100,6 +104,21 @@ fun Contracts() {
             }
             result
         }
+        // alphaCountPreSumList: [0, 3, 8, 10, 12, 14, 16, 19, 22, 25, 29]
+        println("alphaCountPreSumList: $alphaCountPreSumList")
+        // preSumIndexToStateMap: {
+        // 0=AlphaState(alpha=A, state=MutableState(value=false)@16114984),
+        // 1=AlphaState(alpha=B, state=MutableState(value=false)@158659137),
+        // 2=AlphaState(alpha=H, state=MutableState(value=false)@132195302),
+        // 3=AlphaState(alpha=J, state=MutableState(value=false)@229674279),
+        // 4=AlphaState(alpha=L, state=MutableState(value=false)@39332820),
+        // 5=AlphaState(alpha=M, state=MutableState(value=false)@115175805),
+        // 6=AlphaState(alpha=N, state=MutableState(value=false)@143366258),
+        // 7=AlphaState(alpha=S, state=MutableState(value=false)@101635267),
+        // 8=AlphaState(alpha=T, state=MutableState(value=false)@183906624),
+        // 9=AlphaState(alpha=X, state=MutableState(value=false)@89434233),
+        // 10=AlphaState(alpha=#, state=MutableState(value=false)@116836798)})
+        println("preSumIndexToStateMap: $preSumIndexToStateMap")
         val lazyListState = rememberLazyListState()
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
@@ -126,15 +145,16 @@ fun Contracts() {
                     }
                 }
             }
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.CenterEnd) {
+            Box(Modifier.fillMaxSize()/*.background(green.copy(alpha = .5f))*/, contentAlignment = Alignment.CenterEnd) {
                 AlphaGuildBar(preSumIndexToStateMap.values) { selectIndex ->
                     scope.launch {
                         lazyListState.scrollToItem(alphaCountPreSumList[selectIndex])
-                        val newestAlphaIndex = alphaCountPreSumList.searchLastElementIndex(object: Comparator<Int> {
-                            override fun compare(target: Int): Boolean {
-                                return target <= lazyListState.firstVisibleItemIndex
-                            }
-                        })
+                        val newestAlphaIndex =
+                            alphaCountPreSumList.searchLastElementIndex(object : Comparator<Int> {
+                                override fun compare(target: Int): Boolean {
+                                    return target <= lazyListState.firstVisibleItemIndex
+                                }
+                            })
                         currentSelectedAlphaIndex = newestAlphaIndex
                         if (newestAlphaIndex == selectIndex) { // 没有出界才震动
                             context.vibrate(50)
@@ -144,14 +164,18 @@ fun Contracts() {
             }
         }
         val afterFirstVisibleItem by remember { derivedStateOf { lazyListState.firstVisibleItemIndex } }
+
+        // 根据LazyColumn的滚动位置，计算当前应该选中的curSelectedIndex（后面的逻辑会根据这个状态值的变化，触发右侧AlphaGuildBar的UI更新）
         LaunchedEffect(afterFirstVisibleItem) {
-            currentSelectedAlphaIndex = alphaCountPreSumList.searchLastElementIndex(object: Comparator<Int> {
-                override fun compare(target: Int): Boolean {
-                    return target <= lazyListState.firstVisibleItemIndex
-                }
-            })
+            currentSelectedAlphaIndex =
+                alphaCountPreSumList.searchLastElementIndex(object : Comparator<Int> {
+                    override fun compare(target: Int): Boolean {
+                        return target <= lazyListState.firstVisibleItemIndex
+                    }
+                })
         }
 
+        // 在curSelectedIndex变化时，修改对应的AlphaState的状态从而触发AlphaGuildBar的UI更新
         LaunchedEffect(currentSelectedAlphaIndex) {
             val alphaState = preSumIndexToStateMap[currentSelectedAlphaIndex]!!
             preSumIndexToStateMap.values.forEach {
@@ -175,7 +199,11 @@ fun ContractTopBar() {
                     navController.navigate(AppScreen.addFriends)
                 }
             ) {
-                Icon(painter = painterResource(id = R.drawable.add_friend), "add_friends", tint = MaterialTheme.chattyColors.iconColor)
+                Icon(
+                    painter = painterResource(id = R.drawable.add_friend),
+                    "add_friends",
+                    tint = MaterialTheme.chattyColors.iconColor
+                )
             }
         },
         backgroundColor = MaterialTheme.chattyColors.backgroundColor
@@ -241,7 +269,15 @@ fun AlphaGuildBar(alphaStates: MutableCollection<AlphaState>, updateSelectIndex:
                     }
                 ) { change, _ ->
                     with(density) {
-                        currentIndex = (change.position.y / alphaItemHeight.toPx()).toInt().coerceIn(0, alphaStates.size - 1)
+                        // Optimize: 注意change.position.y是相对于父组件的位置，并非增量；也就是在拖动过程中，这个值记录着距离父容器的位置
+                        /**
+                         * 稍微在A的末尾拖动一点点：
+                         *  System.out               I  change.position.y: 55.555542
+                         *  System.out               I  change.position.y: 57.333313
+                         */
+                        println("change.position.y: ${change.position.y}")
+                        currentIndex = (change.position.y / alphaItemHeight.toPx()).toInt()
+                            .coerceIn(0, alphaStates.size - 1)
                     }
                 }
             }
@@ -260,7 +296,10 @@ fun AlphaGuildBar(alphaStates: MutableCollection<AlphaState>, updateSelectIndex:
                             )
                         }
                 ) {
-                    Text(text = alphaState.alpha.toString(), color = if (alphaState.state.value || !MaterialTheme.chattyColors.isLight) Color.White else Color.Black)
+                    Text(
+                        text = alphaState.alpha.toString(),
+                        color = if (alphaState.state.value || !MaterialTheme.chattyColors.isLight) Color.White else Color.Black
+                    )
                 }
             }
         }
@@ -281,7 +320,9 @@ fun HoverBox(
     offsetY: Float
 ) {
     Box(
-        modifier = Modifier.padding(end = 20.dp).offset(y = offsetY.dp),
+        modifier = Modifier
+            .padding(end = 20.dp)
+            .offset(y = offsetY.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(Modifier.size(60.dp)) {
